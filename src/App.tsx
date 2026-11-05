@@ -11,6 +11,7 @@ import Players from './screens/Players';
 import Result from './screens/Result';
 import Settings from './screens/Settings';
 import { useApp } from './store/app';
+import Online from './online/Online';
 
 export default function App() {
   const screen = useApp((s) => s.screen);
@@ -31,6 +32,7 @@ export default function App() {
 
   return (
     <>
+      {window.location.pathname.startsWith('/online') || window.location.pathname.startsWith('/r/') ? <Online /> : <>
       {screen === 'home' && <Home />}
       {screen === 'players' && <Players />}
       {screen === 'outcome' && <Outcome />}
@@ -40,7 +42,8 @@ export default function App() {
       {screen === 'history' && <History />}
       {screen === 'settings' && <Settings />}
       {screen === 'instant' && <Instant />}
-      <UpdatePrompt hidden={screen === 'play' || screen === 'instant'} />
+      </>}
+      <UpdatePrompt hidden={screen === 'play' || screen === 'instant' || window.location.pathname.startsWith('/r/')} />
       <ToastHost />
     </>
   );

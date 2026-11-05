@@ -25,8 +25,10 @@ export default function Home() {
       </header>
 
       <div className="body">
+        <a className="ticket home-start" href="/online?mode=create"><span className="display">각자 폰으로 하기</span><span className="home-start-sub">방 만들기 → 친구 초대 → 함께 게임</span></a>
+        <a className="btn ghost" href="/online">방 코드로 참가하기</a>
         <button className="ticket home-start" onClick={tap(() => go('players'))}>
-          <span className="display">새 게임 시작</span>
+          <span className="display">한 기기로 하기</span>
           <span className="home-start-sub">이름 입력 → 결과 정하기 → 게임 고르기</span>
         </button>
 

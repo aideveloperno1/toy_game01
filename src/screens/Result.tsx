@@ -76,7 +76,11 @@ export default function Result() {
           </ul>
         )}
         <p className="muted" style={{ fontSize: 13, textAlign: 'center', margin: 0 }}>
-          결과는 게임을 시작할 때 판 번호 {seedTag(round.seed)}로 정해졌어요.
+          {round.gameId === 'stopwatch'
+            ? '각자의 측정 기록으로 순위를 정했어요.'
+            : round.gameId === 'cards' || round.gameId === 'pirate'
+              ? '시작 전에 배치를 정하고, 각자의 선택으로 결과를 확정했어요.'
+              : `결과는 게임을 시작할 때 판 번호 ${seedTag(round.seed)}로 정해졌어요.`}
         </p>
       </div>
 

@@ -102,7 +102,7 @@ export default function History() {
                         </div>
                       ))}
                     </div>
-                    {def?.replayable && (
+                    {def?.replayable && !h.online && (
                       <button className="btn ghost small" style={{ marginTop: 10 }} onClick={() => replayEntry(h.id)}>
                         같은 판 다시 보기
                       </button>

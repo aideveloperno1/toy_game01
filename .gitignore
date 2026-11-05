@@ -4,3 +4,11 @@ dev-dist
 *.log
 .DS_Store
 coverage
+.data
+.npm-cache
+dist-server
+test-results
+playwright-report
+.env
+.env.*
+!.env.example

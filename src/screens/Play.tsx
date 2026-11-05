@@ -20,7 +20,7 @@ export default function Play() {
           ×
         </button>
         <h1 className="display">{game.name}</h1>
-        <span className="tag" title="이 판의 번호. 결과는 시작할 때 정해졌어요.">
+        <span className="tag" title="이번 판을 구분하는 번호예요.">
           {replay ? '다시 보기 ' : ''}판 {seedTag(round.seed)}
           {round.attempt > 1 && <b className="again"> 재경기 {round.attempt}회차</b>}
         </span>

@@ -1,0 +1,448 @@
+.online-screen {
+  max-width: 620px;
+  margin: auto;
+}
+.online-screen .body {
+  gap: 20px;
+}
+.online-entry {
+  padding-top: 32px;
+  text-align: center;
+}
+.online-entry h2 {
+  margin: 0;
+  font-size: 30px;
+}
+.online-mark {
+  font-size: 64px;
+}
+.online-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  text-align: left;
+  min-width: 0;
+}
+.online-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.online-form label.row {
+  flex-direction: row;
+  align-items: center;
+}
+.online-form input:not([type="checkbox"]),
+.online-form select,
+.online-form textarea {
+  width: 100%;
+  min-height: 46px;
+  background: var(--night);
+  color: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+}
+.online-form input[type="checkbox"] {
+  width: 20px;
+  height: 20px;
+}
+.online-form legend {
+  font-weight: 700;
+  padding: 0 8px;
+}
+.room-code-input {
+  letter-spacing: 6px;
+  text-align: center;
+  font-size: 25px !important;
+}
+.online-connection {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  font-size: 12px;
+  background: var(--night-2);
+  color: var(--ink-2);
+}
+.online-connection i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--coral);
+}
+.online-connection i.connected {
+  background: var(--mint);
+}
+.online-connection span {
+  margin-left: auto;
+}
+.online-alert {
+  margin: 8px 16px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--night-2);
+}
+.invite-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+.invite-card img {
+  border-radius: 12px;
+}
+.room-code {
+  display: block;
+  letter-spacing: 4px;
+  font-size: 32px;
+  margin: 4px 0 12px;
+}
+.online-label {
+  font-size: 16px;
+  margin: 0 0 10px;
+}
+.online-label span {
+  color: var(--ink-2);
+  font-weight: 400;
+}
+.online-members {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.online-members li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.online-members li:last-child {
+  border: 0;
+}
+.online-members .avatar {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #191a36;
+  font-weight: 700;
+}
+.online-members small {
+  display: block;
+  color: var(--ink-2);
+  font-size: 11px;
+}
+.online-members b {
+  margin-left: auto;
+  color: var(--ink-3);
+  font-size: 13px;
+}
+.online-members b.ready {
+  color: var(--mint);
+}
+.online-rules {
+  font-size: 13px;
+  padding: 16px;
+  background: var(--night-2);
+  border-radius: 14px;
+}
+.online-rules p {
+  margin: 8px 0 0;
+  color: var(--ink-2);
+}
+.online-center {
+  text-align: center;
+}
+.online-result {
+  padding: 24px;
+}
+.online-result h2 {
+  font-size: 30px;
+  margin: 4px 0 16px;
+}
+.online-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 12px;
+  border: 1px solid var(--lantern);
+  border-radius: 14px;
+}
+.online-countdown b {
+  font-size: 48px;
+  color: var(--lantern);
+}
+.my-turn {
+  background: var(--night-3);
+  border-radius: 12px;
+  padding: 10px;
+}
+.online-ladder {
+  width: 100%;
+  max-height: 420px;
+  min-height: 240px;
+}
+.ladder-reveal {
+  stroke-dasharray: 30;
+  stroke-dashoffset: 30;
+  animation: trace-online 1s ease forwards;
+}
+@keyframes trace-online {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.online-wheel-wrap {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+.wheel-pointer {
+  position: absolute;
+  top: 0;
+  color: var(--lantern);
+  z-index: 1;
+  font-size: 32px;
+}
+.online-wheel {
+  width: min(70vw, 280px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 8px solid var(--ink);
+  box-shadow: 0 8px 30px var(--shade);
+  display: grid;
+  place-items: center;
+}
+.online-wheel > span {
+  background: var(--night);
+  border-radius: 50%;
+  padding: 20px;
+  font-family: var(--display);
+}
+.online-wheel.rolling {
+  animation: spin-online 0.55s linear infinite;
+}
+@keyframes spin-online {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.online-card-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.online-card {
+  min-height: 125px;
+  border: 2px solid var(--lantern);
+  border-radius: 14px;
+  background: linear-gradient(140deg, var(--night-3), var(--night-2));
+  color: var(--lantern);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+}
+.online-card > span {
+  font-size: 30px;
+}
+.online-card.opened {
+  background: var(--night-2);
+  border-color: var(--line);
+  color: var(--ink);
+}
+.online-card small {
+  font-size: 12px;
+}
+.online-pirate {
+  background: repeating-linear-gradient(
+    90deg,
+    #684227 0 35px,
+    #795238 35px 38px
+  );
+  border: 8px solid #503522;
+  border-radius: 30% 30% 20% 20%;
+  padding: 18px;
+}
+.pirate-face {
+  font-size: 64px;
+  text-align: center;
+}
+.online-holes {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+.online-holes button {
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px solid #bb8e58;
+  background: #251a17;
+  color: #fff;
+  font-size: 14px;
+  min-height: 40px;
+}
+.online-holes button.used {
+  background: #bc936a;
+}
+.online-bomb {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 28px;
+  cursor: pointer;
+}
+.online-bomb span {
+  font-size: 150px;
+  line-height: 1.2;
+}
+.online-bomb b {
+  font-family: var(--display);
+  font-size: 26px;
+}
+.online-bomb.pulse span {
+  animation: bomb-online 0.7s ease-in-out infinite alternate;
+}
+@keyframes bomb-online {
+  to {
+    transform: scale(1.06) rotate(4deg);
+  }
+}
+.online-scratch {
+  position: relative;
+  max-width: 360px;
+  margin: auto;
+  width: 100%;
+  padding-top: 180px;
+}
+.scratch-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 180px;
+  background: var(--lantern);
+  color: var(--lantern-ink);
+  display: grid;
+  place-items: center;
+  font-size: 28px;
+  border-radius: 16px;
+}
+.online-scratch canvas {
+  position: absolute;
+  top: 0;
+  width: 100%;
+  height: 180px;
+  left: 0;
+  border-radius: 16px;
+}
+.online-scratch button {
+  margin-top: 16px;
+  width: 100%;
+}
+.online-watch {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  text-align: center;
+}
+.online-watch h2 {
+  margin: 0;
+}
+.online-watch .watch {
+  padding: 24px;
+}
+.online-race {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.race-lane > span {
+  font-size: 13px;
+  font-weight: 700;
+}
+.race-track {
+  height: 45px;
+  position: relative;
+  border-bottom: 2px dashed var(--ink-3);
+}
+.race-track > span {
+  position: absolute;
+  font-size: 32px;
+  transition: left 0.16s linear;
+}
+.race-track > b {
+  position: absolute;
+  right: 0;
+  font-size: 24px;
+}
+.online-marble {
+  width: 100%;
+  height: auto;
+  max-height: 65vh;
+  object-fit: contain;
+  background: #23254a;
+  border-radius: 18px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .online-wheel.rolling,
+  .online-bomb.pulse span,
+  .ladder-reveal {
+    animation: none;
+    stroke-dashoffset: 0;
+  }
+  .race-track > span {
+    transition: none;
+  }
+}
+@media (max-width: 360px) {
+  .invite-card img {
+    width: 88px;
+    height: 88px;
+  }
+  .room-code {
+    font-size: 27px;
+  }
+  .online-holes {
+    grid-template-columns: repeat(4, 1fr);
+  }
+}
+.online-screen .body > .btn {
+  flex: none;
+  min-height: 52px;
+}
+.online-result .award-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  list-style: none;
+}
+.online-result .award-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.online-result .award-list li b {
+  margin-left: auto;
+}
+.online-screen fieldset {
+  border: 1px solid var(--line);
+}

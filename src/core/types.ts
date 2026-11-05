@@ -57,6 +57,7 @@ export type Round = {
 export type RoundResult = Record<string, Slot>;
 
 export type HistoryEntry = {
+  online?: boolean;
   id: string;
   createdAt: number;
   gameId: GameId;
