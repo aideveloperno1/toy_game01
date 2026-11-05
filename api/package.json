@@ -1,0 +1,17 @@
+{
+  "name": "bokbulbok-api",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/functions.mjs",
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@azure/functions": "^4.17.0",
+    "@azure/storage-blob": "^12.34.0",
+    "@azure/web-pubsub": "^1.2.0",
+    "matter-js": "^0.20.0",
+    "zod": "^4.6.7"
+  }
+}

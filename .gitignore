@@ -12,3 +12,8 @@ playwright-report
 .env
 .env.*
 !.env.example
+
+api/dist
+api/node_modules
+api/local.settings.json
+.swa

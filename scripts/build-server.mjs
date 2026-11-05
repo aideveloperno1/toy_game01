@@ -1,6 +1,9 @@
 import { build } from "esbuild";
 await build({
-  entryPoints: ["server/index.ts", "server/race-worker.ts"],
+  entryPoints: {
+    local: "serverless/local.ts",
+    "race-worker": "server/race-worker.ts",
+  },
   outdir: "dist-server",
   outExtension: { ".js": ".mjs" },
   bundle: true,

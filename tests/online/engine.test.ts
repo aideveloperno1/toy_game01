@@ -16,8 +16,6 @@ import {
   type Command,
   type OnlineGame,
 } from "../../shared/protocol";
-import { MemoryStore } from "../../server/storage";
-import { RoomService } from "../../server/service";
 
 const cmd = (value: Omit<Command, "id">): Command => ({
   id: randomUUID(),
@@ -206,41 +204,5 @@ describe("온라인 판정과 공개 정보", () => {
     expect(
       commandSchema.safeParse({ ...cmd({ type: "act" }), index: -1 }).success,
     ).toBe(false);
-  });
-});
-describe("저장과 복구", () => {
-  it("저장 실패 시 서버의 확정 상태를 변경하지 않는다", async () => {
-    const store = new MemoryStore(),
-      svc = new RoomService(store, () => 1000);
-    const r = await svc.create("a", "가");
-    const rev = r.revision;
-    store.save = async () => {
-      throw new Error("failure");
-    };
-    await expect(
-      svc.command(r.code, r.hostId, cmd({ type: "ready", ready: true })),
-    ).rejects.toThrow();
-    expect(svc.get(r.code).revision).toBe(rev);
-    expect(svc.get(r.code).members[0].ready).toBe(false);
-  });
-  it("서버 재시작은 방을 복구하고 진행 판만 무효 처리한다", async () => {
-    const store = new MemoryStore(),
-      r = setup();
-    await store.save(r, -1);
-    const svc = new RoomService(store, () => 8000);
-    await svc.initialize();
-    expect(svc.get(r.code).phase).toBe("lobby");
-    expect(svc.get(r.code).notice).toContain("무효");
-    expect(svc.get(r.code).members[0].id).toBe(r.hostId);
-  });
-  it("완료 판은 서버 재시작 뒤에도 결과를 유지한다", async () => {
-    const store = new MemoryStore(),
-      r = setup();
-    tick(r, r.gameState!.deadline);
-    await store.save(r, -1);
-    const svc = new RoomService(store, () => 8000);
-    await svc.initialize();
-    expect(svc.get(r.code).results).toEqual(r.results);
-    expect(svc.get(r.code).phase).toBe("result");
   });
 });

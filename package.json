@@ -6,7 +6,7 @@
   "description": "친구들과 내기할 때 쓰는 복불복 게임 모음 (사다리, 룰렛, 구슬 레이스 등 10종)",
   "scripts": {
     "dev": "node scripts/dev.mjs",
-    "build": "npm run build:web && npm run build:server",
+    "build": "npm run build:web && npm run build:api && npm run build:server",
     "preview": "vite preview --host",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.server.json",
     "test": "vitest run",
@@ -14,22 +14,21 @@
     "dev:local": "vite --host",
     "build:web": "tsc --noEmit && vite build",
     "build:server": "tsc -p tsconfig.server.json && node scripts/build-server.mjs",
-    "start": "node dist-server/index.mjs",
+    "start": "node dist-server/local.mjs",
     "test:online": "vitest run tests/online",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "build:api": "tsc -p tsconfig.server.json && node scripts/build-api.mjs"
   },
   "dependencies": {
-    "@azure/data-tables": "^13.3.2",
-    "@azure/identity": "^4.14.1",
+    "@azure/functions": "^4.17.0",
     "@azure/storage-blob": "^12.34.0",
+    "@azure/web-pubsub": "^1.2.0",
     "@fontsource/jua": "^5.3.0",
     "express": "^5.3.0",
     "matter-js": "^0.20.0",
     "qrcode": "^1.5.4",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
-    "socket.io": "^4.8.4",
-    "socket.io-client": "^4.8.4",
     "zod": "^4.6.7",
     "zustand": "^5.0.16"
   },

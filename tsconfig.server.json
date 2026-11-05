@@ -1,5 +1,8 @@
 {
   "extends": "./tsconfig.json",
-  "compilerOptions": { "types": ["node"], "lib": ["ES2023", "DOM"] },
-  "include": ["server", "shared", "tests/online"]
+  "compilerOptions": {
+    "types": ["node"],
+    "lib": ["ES2023", "DOM"]
+  },
+  "include": ["server", "shared", "tests/online", "serverless"]
 }

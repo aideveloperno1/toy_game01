@@ -14,6 +14,7 @@ import {
   connect,
   send,
   session,
+  requestId,
   sync,
   takeover,
   useOnline,
@@ -37,6 +38,7 @@ export default function Online() {
   const [now, setNow] = useState(Date.now());
   const { room, connected, busy, error, offset } = useOnline();
   const prepared = useRef("");
+  const creationId = useRef(requestId());
   const create =
     !initialCode &&
     new URLSearchParams(location.search).get("mode") === "create";
@@ -116,8 +118,11 @@ export default function Online() {
       if (create) {
         const response = await fetch("/api/rooms", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ name: name.trim() }),
+          headers: {
+            "Content-Type": "application/json",
+            "X-Game-Request": "1",
+          },
+          body: JSON.stringify({ name: name.trim(), id: creationId.current }),
         });
         const body = await response.json();
         if (!response.ok) throw new Error(body.error);

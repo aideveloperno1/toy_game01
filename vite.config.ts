@@ -7,7 +7,7 @@ const base = process.env.BASE_PATH ?? '/';
 
 export default defineConfig({
   base,
-  server: { proxy: { '/api': 'http://127.0.0.1:3001', '/socket.io': { target: 'http://127.0.0.1:3001', ws: true } } },
+  server: { proxy: { '/api': 'http://127.0.0.1:3001' } },
   plugins: [
     react(),
     VitePWA({
@@ -29,7 +29,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        navigateFallbackDenylist: [/^\/api\//, /^\/socket\.io\//, /^\/health/],
+        navigateFallbackDenylist: [/^\/api\//, /^\/health/],
         // 글꼴은 수십 개 조각으로 나뉘어 있어 미리 받지 않고, 쓰는 글자 조각만 받아 저장한다
         globPatterns: ['**/*.{js,css,html,svg}'],
         runtimeCaching: [

@@ -6,7 +6,7 @@ import type {
 } from "../src/core/types";
 import type { Ladder } from "../src/games/ladder/logic";
 
-export const PROTOCOL = 1;
+export const PROTOCOL = 2;
 export const GAME_INFO = {
   ladder: { name: "사다리타기", max: 12, kind: "watch" },
   roulette: { name: "룰렛", max: 20, kind: "watch" },

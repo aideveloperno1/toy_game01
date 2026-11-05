@@ -1,14 +1,12 @@
 param location string = resourceGroup().location
 param appName string
-@minLength(3)
-@maxLength(24)
 param storageName string
+param pubsubName string
+@allowed(['Free_F1', 'Standard_S1'])
+param pubsubSku string = 'Free_F1'
 @secure()
 @minLength(32)
 param sessionSecret string
-@secure()
-@minLength(32)
-param adminToken string
 
 resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   name: storageName
@@ -17,53 +15,43 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = {
   kind: 'StorageV2'
   properties: { supportsHttpsTrafficOnly: true, minimumTlsVersion: 'TLS1_2', allowBlobPublicAccess: false }
 }
-resource plan 'Microsoft.Web/serverfarms@2023-12-01' = {
-  name: '${appName}-plan'
-  location: location
-  kind: 'linux'
-  sku: { name: 'B1', tier: 'Basic', capacity: 1 }
-  properties: { reserved: true }
-}
-resource app 'Microsoft.Web/sites@2023-12-01' = {
-  name: appName
-  location: location
-  kind: 'app,linux'
-  identity: { type: 'SystemAssigned' }
+resource lifecycle 'Microsoft.Storage/storageAccounts/managementPolicies@2023-05-01' = {
+  parent: storage
+  name: 'default'
   properties: {
-    serverFarmId: plan.id
-    httpsOnly: true
-    siteConfig: {
-      linuxFxVersion: 'NODE|24-lts'
-      appCommandLine: 'node dist-server/index.mjs'
-      alwaysOn: true
-      webSocketsEnabled: true
-      ftpsState: 'Disabled'
-      minTlsVersion: '1.2'
-      healthCheckPath: '/health'
+    policy: {
+      rules: [{
+        name: 'expire-game-state'
+        enabled: true
+        type: 'Lifecycle'
+        definition: {
+          filters: { blobTypes: ['blockBlob'], prefixMatch: ['game-state/'] }
+          actions: { baseBlob: { delete: { daysAfterModificationGreaterThan: 3 } } }
+        }
+      }]
     }
   }
 }
-resource settings 'Microsoft.Web/sites/config@2023-12-01' = {
+resource pubsub 'Microsoft.SignalRService/webPubSub@2024-03-01' = {
+  name: pubsubName
+  location: location
+  sku: { name: pubsubSku, tier: pubsubSku == 'Free_F1' ? 'Free' : 'Standard', capacity: 1 }
+  properties: { publicNetworkAccess: 'Enabled', tls: { clientCertEnabled: false } }
+}
+resource app 'Microsoft.Web/staticSites@2023-12-01' = {
+  name: appName
+  location: location
+  sku: { name: 'Free', tier: 'Free' }
+  properties: { stagingEnvironmentPolicy: 'Enabled', allowConfigFileUpdates: true }
+}
+resource settings 'Microsoft.Web/staticSites/config@2023-12-01' = {
   parent: app
   name: 'appsettings'
   properties: {
-    NODE_ENV: 'production'
-    APP_ORIGIN: 'https://${app.properties.defaultHostName}'
     SESSION_SECRET: sessionSecret
-    ADMIN_TOKEN: adminToken
-    AZURE_STORAGE_ACCOUNT: storage.name
-    SCM_DO_BUILD_DURING_DEPLOYMENT: 'false'
+    GAME_STORAGE_CONNECTION_STRING: 'DefaultEndpointsProtocol=https;AccountName=${storage.name};AccountKey=${storage.listKeys().keys[0].value};EndpointSuffix=${environment().suffixes.storage}'
+    WEB_PUBSUB_CONNECTION_STRING: pubsub.listKeys().primaryConnectionString
   }
 }
-resource tableRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storage.id,app.id,'tables')
-  scope: storage
-  properties: { principalId: app.identity.principalId, principalType: 'ServicePrincipal', roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions','0a9a7e1f-b9d0-4cc4-a60d-0319b160aaa3') }
-}
-resource blobRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(storage.id,app.id,'blobs')
-  scope: storage
-  properties: { principalId: app.identity.principalId, principalType: 'ServicePrincipal', roleDefinitionId: subscriptionResourceId('Microsoft.Authorization/roleDefinitions','ba92f5b4-2d11-453d-a403-e96b0029c9fe') }
-}
-output appUrl string = 'https://${app.properties.defaultHostName}'
-output webAppName string = app.name
+output appUrl string = 'https://${app.properties.defaultHostname}'
+output staticWebAppName string = app.name

@@ -1,69 +1,91 @@
-# 온라인 방 운영 및 배포
+# Azure Static Web Apps 운영
 
-## 실행
+## 배포 대상
 
-Node.js 24 LTS에서 `npm ci`, `npm run dev`를 실행한다. Vite는 5173, 게임 서버는 3001 포트를 사용한다. Vite가 보여 주는 Network 주소로 같은 Wi-Fi의 폰에서 접속할 수 있다. 다른 네트워크의 폰에는 Azure HTTPS 주소를 사용한다. 개발 모드 서버 코드를 바꿨다면 `npm run dev`를 다시 실행해 서버를 재빌드한다.
+- 프런트엔드: `dist/` (React/Vite/PWA).
+- API: `api/host.json`, `api/package.json`, `api/dist/`, 운영 의존성. SWA 기본 관리형 Azure Functions, Node.js 22, HTTP 트리거 하나로 `/api/*` 처리.
+- 저장: Azure Blob Storage의 **비공개** `game-state` 컨테이너. `rooms/` 방, `races/` 경주, `limits/` 생성·입장 제한.
+- 알림: Azure Web PubSub의 `game` 허브. 서버만 변경 알림을 보내며, 참가자는 허용된 방의 알림만 받습니다. 정답·세션·전체 경주 경로는 알림에 포함되지 않습니다.
+- App Service, Socket.IO, Azure Table Storage는 사용하지 않습니다. SWA 기본 API는 HTTP만 지원하므로 API 안에 상시 타이머나 WebSocket 서버를 띄우지 않습니다.
 
-`npm run build` 후 `npm start`는 웹과 서버를 같은 주소에서 제공한다. `npm run preview`는 정적 화면 전용으로 온라인 검증에는 사용하지 않는다. `.env.example`을 참고해 `.env`를 설정할 수 있다. 비밀값은 저장소에 올리지 않는다.
+## 기존 SWA에 필요한 설정
 
-로컬에서는 `.data/`에 방과 세션 서명키를 저장한다. 앱을 재시작해도 같은 브라우저의 참가자 신원과 완료 결과를 복구한다. 브라우저 저장소/쿠키를 지우거나 다른 브라우저로 열면 새로운 참가자로 입장한다.
+Azure Portal에서 **Static Web Apps → Environment variables**에 다음 API 설정을 넣습니다. 빌드용 `VITE_` 변수나 Git에 넣지 마세요.
 
-## 방 규칙
+| 이름 | 값 |
+| --- | --- |
+| `GAME_STORAGE_CONNECTION_STRING` | Storage Account의 연결 문자열. 비공개 Blob 생성/읽기/쓰기 권한 필요 |
+| `WEB_PUBSUB_CONNECTION_STRING` | Web PubSub 리소스의 Keys에서 얻은 연결 문자열 |
+| `SESSION_SECRET` | 직접 생성한 32자 이상의 무작위 비밀값. 재배포 때도 같은 값 유지 |
+| `APP_ORIGIN` (선택) | 정확히 한 도메인만 허용하려면 `https://...azurestaticapps.net`. 여러 사용자 도메인/미리보기 환경이면 생략 |
 
-- 최대 30명. 게임별 최대 인원은 대기실 선택 목록에 표시한다.
-- 닉네임 중복은 숫자로 구분한다. 준비 후 설정이 바뀌면 모두 준비를 다시 한다.
-- 참가자 전원이 준비되고 연결되어야 방장이 시작할 수 있다. 데이터 로딩은 15초, 공통 카운트다운은 3초다.
-- 진행 중 들어온 사람은 관람하고 다음 판에 참여한다. 끊긴 참가자는 다음 대기실에서 관람 상태로 전환되며 준비를 누르면 다시 참가한다.
-- 방장이 끊기면 60초 후 접속 중인 참가자에게 위임한다. 돌아와도 방장 권한을 자동 회수하지 않는다.
-- 같은 브라우저의 여러 탭은 참가자를 늘리지 않는다. 한 탭만 조작하며 다른 탭의 ‘이 화면에서 조작하기’로 이전할 수 있다.
-- 게임 시작 후 판을 바꾸거나 방장 단독으로 다시 추첨할 수 없다. 다음 판은 결과 화면에서 방장이 열고 모두 다시 준비한다.
-- 모두 끊긴 방은 10분, 마지막 활동으로부터 2시간이 지난 방은 종료한다. 종료된 방의 데이터는 최대 24시간 후 정리한다.
+필수값이 빠지면 `/api/health`와 방 기능이 503으로 설정 오류를 반환합니다. 설정 없는 운영 환경에서 로컬 파일이나 메모리로 대체하지 않습니다. `/api/health`의 200은 패키지/설정 준비 상태이며 실제 Azure 자원의 권한·통신 검증은 방 생성으로 확인합니다.
 
-## 게임별 시간과 중도 이탈
+Storage 컨테이너는 첫 요청 때 비공개로 생성됩니다. Web PubSub의 허브용 이벤트 처리기나 클라이언트 전송 권한은 설정할 필요가 없습니다. 토큰에 방 그룹이 미리 지정되며 API가 게임 입력을 판정합니다.
 
-| 게임 | 규칙 |
-|---|---|
-| 사다리 | 각자 자신의 줄 공개, 30초 후 모두 공개 |
-| 룰렛 | 방장이 돌림. 15초 미입력 시 자동 회전, 2.5초 후 결과 공개 |
-| 카드 / 해적 통 | 내 차례만 선택, 30초 후 남은 위치에서 무작위 자동 선택 |
-| 폭탄 | 내 차례에 넘김, 15초 후 자동 넘김 |
-| 스크래치 | 자신의 복권을 긁거나 접근성 버튼으로 공개, 45초 후 모두 공개 |
-| 10초 맞추기 | 판 시작 후 45초 안에 각자 한 번 측정·제출. 동점은 0.01초 기준 한 번 재경기 |
-| 경주 2종 | 서버가 공통 시각과 경로 관리, 현재 위치만 전달 |
+SWA Free 플랜에서도 이 API 구조를 사용할 수 있습니다. Storage/Web PubSub는 별도 리소스입니다. Web PubSub Free는 전체 서비스에서 동시 연결 20개와 일일 메시지 제한이 있으므로, 30명 또는 여러 방의 원활한 실시간 알림에는 Standard 용량을 선택하세요. 한도 초과/알림 장애 시에는 HTTP 동기화로 이어지지만 지연이 늘 수 있습니다. 비용과 리전 제공 여부는 계정에서 확인합니다.
 
-연결 끊김은 게임 제한 시간을 멈추지 않는다. 자동 선택도 정식 결과에 포함되며 자동 진행 횟수를 표시한다. 10초 맞추기는 이미 시작한 시도를 새로 발급하지 않는다. 동일 페이지에 측정 결과가 남아 있으면 제한 시간 내 같은 기록을 재전송할 수 있다. 새로고침 또는 화면을 숨겨 측정이 중단되면 미제출 처리한다. 미제출은 정상 기록 뒤, 최종 동점/미제출끼리는 시작 전에 정한 무작위 순서로 배정한다. 브라우저 제출 시간을 이용하므로 강한 부정행위 방지를 보장하지 않는다.
+## GitHub 연결
 
-## 저장과 장애
+1. 저장소 Secret **`AZURE_STATIC_WEB_APPS_API_TOKEN`**에 대상 SWA의 배포 토큰을 저장합니다.
+2. `deploy.yml`의 **Test and build**가 Node 22로 빌드, 전체 자동 검사, 모바일 브라우저 검사를 수행하고 `swa-package`를 만듭니다.
+3. main의 push 검사가 성공하면 같은 workflow의 `deploy` 단계가 그 실행의 산출물을 내려받아 배포합니다. 토큰이 없으면 배포 단계는 건너뛰며 CI만 수행됩니다.
+4. 배포 입력은 `app_location: dist`, `api_location: api`, `skip_app_build: true`, `skip_api_build: true`, `output_location: ''`입니다. API 폴더를 생략하면 화면만 올라가므로 반드시 포함해야 합니다.
+5. Portal에서 GitHub 연결할 때 Azure가 만든 별도 workflow와 이 workflow를 동시에 사용하지 마세요. 하나의 배포 workflow만 활성화합니다. 토큰 이름이 자동 생성된 긴 이름이면 위 Secret 이름에 맞추거나 `deploy.yml`의 참조를 변경합니다.
 
-서버는 권한·차례 확인 후 상태를 저장하고 성공한 상태만 전송한다. 입력마다 요청 번호를 사용하고 최근 128개를 중복 처리하지 않는다. 옛 판/차례 입력은 거절한다. 재접속은 최신 공개 상태로 복원한다. 비공개 배치, 순위 난수, 참가자 세션은 공개 상태에 포함하지 않는다.
+미리보기 환경 자동 배포는 현재 workflow에 포함하지 않습니다. 추가할 때에는 미리보기 전용 Storage, PubSub, SESSION_SECRET을 사용해 운영 방과 분리하세요.
 
-완료 결과는 방별 최근 50판 중 최근 24시간을 서버에서 조회할 수 있고 기기에는 최근 50판을 저장한다. 종료 방 삭제 작업도 수행한다. 서버 장애로 재시작하면 방과 완료 결과는 유지하고, 당시 진행/준비 중이던 판은 무효 처리해 대기실로 돌린다. 타이머를 임의로 재생해 미접속자에게 결과를 확정하지 않는다. 저장소 장애 시 실패한 요청은 확정하지 않는다.
+## 새 Azure 자원
 
-Table 데이터는 압축 후 ASCII 조각으로 저장해 속성/엔터티 크기 제한과 문자 경계 손상을 피하고 ETag로 충돌을 검출한다. Blob은 비공개이며 브라우저가 전체 미래 경로를 직접 다운로드할 수 없다. 구슬 계산은 작업 스레드에서 한 번 수행하고 동시 계산을 제한한다. 현재 위치를 약 150ms 간격으로 전달하므로 저속망에서 화면이 덜 부드러울 수 있다.
+`infra/main.bicep`은 SWA Free + Storage LRS + Web PubSub를 만듭니다. 필요한 매개변수는 `appName`, `storageName`, `pubsubName`, `sessionSecret`, 지원되는 `location`입니다. Web PubSub는 기본 `Free_F1`, 운영 규모에 따라 `pubsubSku=Standard_S1`을 선택합니다. 실제 리소스 생성은 사용자 Azure 계정에서 실행해야 합니다.
 
-## Azure 준비
+템플릿은 API 설정을 연결하고, `game-state/`에서 3일 이상 변경되지 않은 Blob을 지우는 수명 주기를 설정합니다. **기존 자원을 연결하면 이 수명 주기를 별도로 적용하세요.** API는 만료된 방 접근을 차단하지만 SWA HTTP 함수 자체가 주기적으로 파일을 삭제하지는 않습니다. 이 템플릿은 새 자원용이므로 기존 SWA에 적용하기 전 설정 보존 여부를 확인하세요.
 
-1. 사용자가 지정한 구독/리소스 그룹과 배포 지역을 선택한다. 기본 템플릿은 Linux B1 한 인스턴스와 Standard LRS Storage를 생성하므로 Azure 비용이 발생한다.
-2. `az bicep build --file infra/main.bicep`으로 템플릿을 확인한다. `az deployment group what-if`로 생성 자원과 변경을 확인한 뒤 `az deployment group create`로 배포한다. `appName`, `storageName`, 서로 다른 32자 이상 무작위 `sessionSecret`, `adminToken`을 보안 파라미터로 전달한다.
-3. 앱의 관리 ID에 Storage Table Data Contributor 및 Storage Blob Data Contributor를 할당한다. 템플릿이 이 권한을 포함하며 권한 전파에 시간이 걸릴 수 있다.
-4. Node 24 LTS, HTTPS, WebSocket, Always On, 단일 인스턴스와 `node dist-server/index.mjs` 시작 명령을 사용한다. PM2 cluster나 다중 인스턴스를 추가하면 안 된다.
-5. GitHub `production` 환경에 `AZURE_CLIENT_ID`, `AZURE_TENANT_ID`, `AZURE_SUBSCRIPTION_ID`, `AZURE_WEBAPP_NAME`, `APP_URL` 변수를 설정한다. Azure와 GitHub OIDC 연결을 구성하고 `GAME_ADMIN_TOKEN` 보안값은 앱의 `ADMIN_TOKEN`과 일치시킨다.
-6. `Deploy to Azure` 워크플로를 실행한다. 빈 앱에 처음 배포할 때만 `first_deploy=true`로 설정한다. 이후 배포는 먼저 새 판 생성을 막고 기존 판 종료를 기다린다.
+## 게임과 복구 규칙
 
-운영 필수 환경 변수: `NODE_ENV=production`, `APP_ORIGIN`(정확한 HTTPS 주소), `SESSION_SECRET`, `AZURE_STORAGE_ACCOUNT`. 배포용 `ADMIN_TOKEN`도 설정한다. `PORT`는 Azure가 지정한 값을 따른다. Storage 연결 문자열보다 관리 ID를 사용한다. 앱은 필수 운영 설정이 없으면 시작하지 않는다. 사용자 지정 도메인을 적용하면 `APP_ORIGIN`을 갱신하고 기존 도메인 접속을 새 도메인으로 통일한다.
+- 로그인 없이 서명된 HttpOnly/Secure/SameSite 쿠키로 참가자 신원을 유지합니다. 같은 브라우저와 도메인에서 재입장하면 같은 참가자가 됩니다. 쿠키 삭제, 시크릿 모드 또는 다른 브라우저는 다른 참가자입니다.
+- 방은 최대 30명, 각 게임별 제한은 화면에 표시됩니다. 손가락 터치는 한 기기 전용입니다. 시작 후 입장자는 해당 판의 관전자입니다.
+- 모든 참가자가 준비하고 화면 로딩을 알리면 공통 서버 시각으로 3초 뒤 시작합니다. 서버가 차례·기한·배치·판정을 결정합니다. 클라이언트는 현재 공개 상태만 받습니다.
+- Blob의 ETag를 조건으로 저장합니다. 여러 함수가 동시에 호출되면 최신 상태로 재시도하므로 이전 상태를 덮어쓰지 않습니다. 동일 요청 ID의 재전송은 중복 반영하지 않습니다. 저장 성공 뒤에만 알립니다.
+- 콜드 스타트/재배포는 방을 초기화하지 않습니다. 저장된 방을 매 요청에서 읽습니다. 큰 경주 데이터만 변경 불가능한 값으로 짧게 캐시합니다.
+- Web PubSub는 변경 알림을 전달합니다. 알림 유실/중단 시에도 로비 약 1.5초, 게임 약 0.5초 간격의 HTTP 요청으로 복구합니다. 요청 처리 시간/네트워크 지연은 이 간격에 추가됩니다. 경주 화면은 현재 좌표만 받습니다.
+- 기한이 지나면 **다음 API 요청에서** 자동 진행을 확정합니다. 아무도 접속하지 않은 동안 백그라운드로 게임을 계속 계산하지 않습니다. 모두 복귀하면 경과 시간을 먼저 검사합니다.
+- 20초간 응답이 없는 참가자는 연결 끊김으로 판단하고, 그 뒤 60초간 방장이 돌아오지 않으면 접속 중인 참가자에게 위임합니다. 전원 부재 10분 또는 유효 활동 2시간 없음은 종료 조건입니다. 완료 기록은 24시간/최대 50판입니다.
+- 한 참가자의 여러 탭 중 조작권은 하나만 가집니다. 다른 탭은 `이 화면에서 조작하기`로 인수합니다. 연결이 끊긴 탭의 조작권은 새 입장에서 회수할 수 있습니다.
+- 10초 맞추기는 휴대폰의 로컬 경과 시간으로 측정하고 서버에서 허용 범위를 검사합니다. 동점은 한 번 재경기, 다시 동점이면 사전 추첨 순서를 사용합니다. 브라우저 조작까지 막는 금전 베팅용 부정 방지 시스템은 아닙니다.
+- API는 JSON·전용 요청 헤더·쿠키를 요구하고 외부 출처의 브라우저 요청을 거절합니다. 방 생성은 세션당 시간당 6회, 입장은 분당 30회로 제한합니다. 대규모 공개 운영 전에는 서비스 규모에 맞는 트래픽 제한과 비용 관찰을 추가하세요.
 
-공식 참고: [Node 설정](https://learn.microsoft.com/en-us/azure/app-service/configure-language-nodejs), [Table Storage](https://learn.microsoft.com/en-us/azure/storage/tables/table-storage-overview), [Socket.IO 재접속](https://socket.io/docs/v4/connection-state-recovery/).
+## 로컬 실행과 검증
 
-## 배포·복구 절차
+```bash
+npm ci
+npm run build
+npm test
+npx playwright install chromium
+npm run test:e2e
+npm start
+```
 
-`APP_URL`과 `ADMIN_TOKEN`을 설정하고 `node scripts/drain.mjs`로 새 방/새 판을 막는다. 환경 변수를 바꾸어 점검 모드를 켜면 서버가 재시작될 수 있으므로 실행 중에는 인증된 운영 API를 사용한다. 10분 안에 진행 판이 끝나지 않으면 배포를 중단한다. 실패한 배포는 `node scripts/drain.mjs --resume`으로 새 판을 다시 허용한다.
+`npm start`/`npm run dev`는 동일 API 처리 코드를 로컬 HTTP 서버에서 실행합니다. 키를 넣지 않은 로컬 모드에서만 `.data/swa`에 저장하고 HTTP 동기화를 사용합니다. 같은 Wi-Fi의 휴대폰은 PC의 LAN 주소로 접속할 수 있습니다. PC 방화벽과 네트워크의 장치 격리 여부를 확인하세요.
 
-CI가 생성한 `azure-release` 아티팩트를 보관한다. 문제 발생 시 같은 drain 절차 후 이전 검증 아티팩트를 재배포한다. 세션 서명키는 유지해야 기존 참가자가 복귀할 수 있다. 데이터 형식이 바뀐 버전 간 롤백은 별도의 호환 확인이 필요하다. 현재 프로토콜은 1이며 호환되지 않는 화면은 새로고침을 안내한다.
+Azure Functions Core Tools가 있다면 `npm run build:api` 후 `api/`에서 `func start`로 실제 함수 패키지를 실행할 수 있습니다. `FUNCTIONS_WORKER_RUNTIME=node` 및 위 API 설정, 로컬 실행용 `AzureWebJobsStorage`를 환경에 제공합니다. `node scripts/smoke-functions.mjs`는 기본 `http://127.0.0.1:7071`에 세 독립 세션으로 방을 만들고 사다리의 같은 결과와 토큰 발급을 검사합니다. `FUNCTIONS_TEST_URL`로 대상 호스트를 지정할 수 있으며 테스트 방 1개가 생성됩니다.
 
-`/health`는 프로세스 실행 상태를 확인한다. 저장 오류는 `room_sweep_failed`, `room_disconnect_save_failed`로 로그에 남으며 공개 상태에 오류 안내가 전달된다. 인증값이나 전체 비공개 판 정보를 로그에 추가하지 않는다. App Service 로그 스트림으로 시작/저장 오류를 확인한다. 비용·응답 시간에 맞춰 사양을 조정하되 다중 인스턴스 확장은 공유 메시지 전달과 방 소유권 설계를 추가한 후 진행한다.
+`TEST_AZURITE=1 npm test`는 Blob 에뮬레이터 통합 검사도 실행합니다. Windows PowerShell에서는 먼저 `$env:TEST_AZURITE='1'`을 설정하세요. 테스트용 Azurite 계정은 `gametest`, 키는 바이트 1~32를 Base64로 바꾼 공개 테스트 값, Blob 포트는 11000입니다. 운영 자격 증명은 테스트에 사용하지 않습니다.
 
-## 검증 명령과 한계
+검증 범위: 9종 게임 규칙, 여러 함수의 동시 준비/중복 요청, 공개 정보 보호, 타임아웃/방장 위임/복구, 실제 Blob 조건부 저장, 모바일 크기의 독립 브라우저에서 9종 완료·새로고침·통신 복구·탭 제어. 실제 Azure 서비스와 물리 휴대폰은 배포 후 별도로 확인해야 합니다.
 
-`npm run build`, `npm test`, `npm run test:e2e`를 사용한다. 부하 시험은 로컬 파일 저장 기준이며 `.data/load-1x30.json`, `.data/load-10x10.json`에 응답 시간을 기록한다. Azure SDK 시험은 Azurite를 11000/11001/11002 포트로 실행한 뒤 `TEST_AZURITE=1`로 `tests/online/azure.test.ts`를 실행한다. 시험용 계정은 `gametest`, 키는 바이트 1~32를 base64 인코딩한 공개 로컬 값이다. 운영 계정에는 사용하지 않는다.
+## 배포 후 짧은 확인
 
-실제 Azure 배포, 관리 ID 권한, 클라우드 저장 지연, Android/iPhone의 화면 잠금·백그라운드 복귀·모바일 데이터 전환·진동/음향은 별도 확인해야 한다. Playwright의 모바일 화면 검증은 실제 기기 검증을 대신하지 않는다.
+- `/api/health`가 JSON 200인지 확인합니다. HTML이면 API 배포 경로가 빠진 것입니다.
+- 서로 다른 실제 휴대폰으로 같은 초대 링크에 들어가 준비→시작→결과가 같은지 확인합니다.
+- 한 폰의 통신을 잠시 끊었다 연결하고 같은 참가자로 돌아오는지 확인합니다.
+- `/api/rooms/{code}/negotiate`가 Web PubSub URL을 반환하고 브라우저에서 WebSocket이 연결되는지 확인합니다. URL에는 단기 토큰이 있으므로 공유하거나 로그에 남기지 마세요.
+- 화면만 나오고 방 생성이 실패하면 API 환경 변수, Storage 연결 문자열/권한, PubSub 연결 문자열부터 확인합니다.
+
+## 참고한 공식 문서
+
+- [SWA API 제한: HTTP 전용, 최대 45초](https://learn.microsoft.com/en-us/azure/static-web-apps/apis-overview)
+- [SWA 구성과 Node 22 런타임](https://learn.microsoft.com/en-us/azure/static-web-apps/configuration)
+- [미리 빌드한 화면/API 배포](https://learn.microsoft.com/en-us/azure/static-web-apps/build-configuration)
+- [Web PubSub JSON 프로토콜 및 권한](https://learn.microsoft.com/en-us/azure/azure-web-pubsub/reference-json-webpubsub-subprotocol)
+- [Azure Web PubSub 연결/메시지 한도](https://learn.microsoft.com/en-us/azure/azure-resource-manager/management/azure-subscription-service-limits#azure-web-pubsub-limits)

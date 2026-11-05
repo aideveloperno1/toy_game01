@@ -206,3 +206,67 @@ test("나머지 일곱 게임의 실제 화면과 완료 결과", async ({ page,
   expect(errors).toEqual([]);
   await friend.context.close();
 });
+
+test("통신 끊김 복구와 같은 참가자의 별도 탭 조작권", async ({
+  page,
+  browser,
+  context,
+}) => {
+  await page.goto("/online?mode=create");
+  await page.getByLabel("닉네임").fill("방장");
+  await page.getByRole("button", { name: "방 만들기", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "대기실", exact: true }),
+  ).toBeVisible();
+  const code = page.url().split("/").at(-1)!;
+  const friend = await guest(browser, code, "친구");
+  await expect(page.locator(".online-members li")).toHaveCount(2);
+  await friend.context.setOffline(true);
+  await expect(friend.page.locator(".online-connection")).toContainText(
+    "연결 복구 중",
+    { timeout: 10000 },
+  );
+  await friend.context.setOffline(false);
+  await expect(friend.page.locator(".online-connection")).toContainText(
+    "함께 연결됨",
+    { timeout: 15000 },
+  );
+  await expect(friend.page.locator('.online-alert[role="alert"]')).toHaveCount(
+    0,
+  );
+  await expect(page.locator(".online-members li")).toHaveCount(2);
+  const other = await context.newPage();
+  await other.goto("/r/" + code);
+  await other.getByRole("button", { name: "입장하기", exact: true }).click();
+  await expect(
+    other.getByText("다른 탭에서 조작 중입니다.", { exact: false }),
+  ).toBeVisible();
+  await other
+    .getByRole("button", { name: "이 화면에서 조작하기", exact: true })
+    .click();
+  await expect(
+    page.getByText("다른 탭에서 조작 중입니다.", { exact: false }),
+  ).toBeVisible();
+  await page
+    .getByRole("button", { name: "이 화면에서 조작하기", exact: true })
+    .click();
+  await expect(
+    other.getByText("다른 탭에서 조작 중입니다.", { exact: false }),
+  ).toBeVisible();
+  await other.close();
+  await ready([page, friend.page]);
+  for (const p of [page, friend.page])
+    await p
+      .getByRole("button", { name: "내 사다리 공개", exact: true })
+      .click();
+  for (const p of [page, friend.page])
+    await expect(
+      p.getByRole("heading", { name: "이번 판 결과", exact: true }),
+    ).toBeVisible();
+  page.once("dialog", (dialog) => void dialog.accept());
+  await page.getByRole("button", { name: "방 나가기", exact: true }).click();
+  await expect(
+    page.getByRole("link", { name: "각자 폰으로 하기", exact: false }),
+  ).toBeVisible();
+  await friend.context.close();
+});

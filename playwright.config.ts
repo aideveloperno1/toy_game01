@@ -15,10 +15,10 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "node dist-server/index.mjs",
-    url: "http://127.0.0.1:3187/health",
+    command: "node dist-server/local.mjs",
+    url: "http://127.0.0.1:3187/api/health",
     reuseExistingServer: false,
-    env: { PORT: "3187", DATA_DIR: ".data/e2e", NODE_ENV: "test" },
+    env: { PORT: "3187", DATA_DIR: ".data/swa-e2e", NODE_ENV: "test" },
     timeout: 30000,
   },
 });

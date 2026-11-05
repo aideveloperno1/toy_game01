@@ -12,8 +12,8 @@ import {
   type Game,
 } from "../../server/engine";
 import { buildRace, frame } from "../../server/races";
-import { FileStore } from "../../server/storage";
-import { RoomService } from "../../server/service";
+import { FileRepository } from "../../serverless/repository";
+import { FunctionRoomService, type StoredRoom } from "../../serverless/service";
 import type { Command, OnlineGame } from "../../shared/protocol";
 const command = (c: Omit<Command, "id">): Command => ({
   id: randomUUID(),
@@ -64,19 +64,21 @@ describe("경주와 실제 디스크 복구", () => {
   it("원자적 파일 저장 뒤 새 프로세스 상태로 결과를 복구한다", async () => {
     const root = await mkdtemp(pathJoin(tmpdir(), "room-game-test-"));
     try {
-      const store = new FileStore(root),
+      const store = new FileRepository(root),
         r = game("ladder", 3);
       begin(r, 1000);
       tick(r, r.gameState!.deadline);
-      await store.save(r, -1);
-      await expect(store.save({ ...r, revision: 10 }, 3)).rejects.toThrow(
-        "충돌",
+      const stored: StoredRoom = { ...r, creationKey: "test", presence: {} };
+      expect(await store.put("rooms/" + r.code, stored, null)).toBe(true);
+      expect(await store.put("rooms/" + r.code, stored, null)).toBe(false);
+      const svc = new FunctionRoomService(
+        new FileRepository(root),
+        undefined,
+        () => 40000,
       );
-      const svc = new RoomService(new FileStore(root), () => 40000);
-      await svc.initialize();
-      expect(svc.get(r.code).results).toEqual(r.results);
-      expect(svc.get(r.code).completed).toHaveLength(1);
-      expect(svc.get(r.code).members.every((m) => !m.connected)).toBe(true);
+      const restored = await svc.operate(r.code, "sid0", "tab", "sync");
+      expect(restored.room.results).toEqual(r.results);
+      expect((await svc.member(r.code, "sid0")).room.completed).toHaveLength(1);
     } finally {
       await rm(root, { recursive: true, force: true });
     }

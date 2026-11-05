@@ -1,5 +1,7 @@
 import { Worker } from "node:worker_threads";
 import { resolve as resolvePath } from "node:path";
+import { existsSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { raceCurves, progressAt } from "../src/games/horse/logic";
 import { createPrng } from "../src/core/rng";
 import type { Game } from "./engine";
@@ -36,7 +38,11 @@ export function buildRace(g: Game): Promise<RaceAsset> {
       () =>
         new Promise<RaceAsset>((resolve, reject) => {
           const worker = new Worker(
-            resolvePath("dist-server/race-worker.mjs"),
+            existsSync(
+              fileURLToPath(new URL("./race-worker.mjs", import.meta.url)),
+            )
+              ? new URL("./race-worker.mjs", import.meta.url)
+              : resolvePath("dist-server/race-worker.mjs"),
             {
               workerData: {
                 seed: g.round.seed,

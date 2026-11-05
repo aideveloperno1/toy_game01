@@ -42,24 +42,28 @@
 
 ## 실행
 
-Node.js 24 LTS를 권장합니다. 최소 22.12 이상이 필요합니다.
+Azure API와 동일한 Node.js 22 LTS(22.12 이상)를 사용합니다.
 
 ```bash
 npm ci
 npm run dev      # 웹 화면(5173) + 방 서버(3001). 같은 Wi-Fi에서는 Network 주소 사용
-npm run build    # dist/ 웹 화면 + dist-server/ 서버 생성
-npm test         # 기존 공정성 + 온라인 판정/통신/복구/부하 테스트
+npm run build    # dist/ 화면 + api/dist/ Azure API + dist-server/ 로컬 API 생성
+npm test         # 공정성 + 온라인 판정/동시 저장/복구/HTTP 테스트
 npx playwright install chromium
 npm run test:e2e # 독립 모바일 브라우저로 온라인 9종 실제 진행
-npm start        # 빌드된 전체 서비스 실행 (기본 3001)
+npm start        # 개발·검증용 로컬 서버 (기본 3001)
 npm run dev:local # 웹 화면만 개발. 온라인 서버가 없으면 방 기능 사용 불가
 ```
 
-## 배포 (Azure App Service)
+## 배포 (Azure Static Web Apps)
 
-`.github/workflows/deploy.yml`은 코드 검사와 테스트를 실행합니다. Azure 자원은 `infra/main.bicep`으로 준비하고, `.github/workflows/azure.yml`을 수동 실행해 배포합니다. GitHub Pages만으로는 방 서버를 실행할 수 없습니다.
+화면과 HTTP API는 **Static Web Apps의 기본 관리형 Functions**로 배포합니다. 방과 비공개 경주 데이터는 **Azure Blob Storage**, 실시간 변경 알림은 **Azure Web PubSub**를 사용합니다. 별도 App Service는 필요하지 않습니다. SWA의 Free 플랜도 API를 지원합니다.
 
-운영은 App Service 한 인스턴스·Node 프로세스 하나를 사용합니다. Azure Table Storage에 방과 결과, 비공개 Blob에 경주 데이터를 저장합니다. 운영 환경 변수와 권한 설정은 [운영 문서](docs/OPERATIONS.md)에 정리되어 있습니다. 실제 Azure 계정 배포와 실제 휴대폰 시험은 별도 확인이 필요합니다.
+GitHub 연결만으로 외부 저장소와 실시간 서비스의 키가 자동 설정되지는 않습니다. SWA의 API 환경 변수에 `GAME_STORAGE_CONNECTION_STRING`, `WEB_PUBSUB_CONNECTION_STRING`, `SESSION_SECRET`을 설정해야 합니다. 설정이 없으면 방 기능은 명확한 오류를 반환하며 임시 저장으로 넘어가지 않습니다.
+
+`deploy.yml`이 빌드·테스트 후 배포 파일을 만들고, 성공하면 같은 workflow의 배포 단계가 SWA에 배포합니다. GitHub Secret `AZURE_STATIC_WEB_APPS_API_TOKEN`이 있을 때 자동 배포가 활성화됩니다. Azure가 별도로 생성한 배포 workflow가 있으면 중복되지 않게 하나만 사용하세요. 새 리소스 템플릿은 `infra/main.bicep`, 기존 리소스 연결 및 상세 검증은 [운영 문서](docs/OPERATIONS.md)에 있습니다.
+
+실시간 연결이 끊겨도 HTTP 동기화로 게임을 이어갑니다. 기본 HTTP API는 상시 타이머를 실행하지 않으므로 마감 처리는 접속자의 다음 동기화 요청 때 확정됩니다. 모두 나가면 다음 접속에서 경과 시간을 판정하고, 10분간 전원 부재하면 방을 닫습니다.
 
 ## 구조
 
